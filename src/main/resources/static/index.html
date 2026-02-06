@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Amazon Clone</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .form-group { margin-bottom: 10px; }
+        input { padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 8px 15px; cursor: pointer; border: none; color: white; border-radius: 4px;}
+        
+        /* Button Colors */
+        .btn-add { background-color: #28a745; } 
+        .btn-update { background-color: #007bff; } 
+        .btn-delete { background-color: #dc3545; margin-left: 5px;} 
+        .btn-edit { background-color: #ffc107; color: black; margin-left: 10px; } 
+        .btn-search { background-color: #6c757d; } /* Grey */
+
+        .search-box { margin-bottom: 20px; padding: 15px; background: #e9ecef; border-radius: 5px; display: flex; align-items: center; }
+        .form-box { background: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #dee2e6;}
+        li { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">🛍️ My Amazon Store</h1>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search products..." style="flex-grow: 1;">
+        <button class="btn-search" onclick="searchProducts()">🔍 Search</button>
+        <button onclick="loadProducts()" style="margin-left: 5px; background: #17a2b8;">Reset</button>
+    </div>
+
+    <div class="form-box">
+        <h3 id="formTitle" style="margin-top: 0;">Add New Product</h3>
+        <input type="hidden" id="editId">
+        <div class="form-group">
+            <input type="text" id="nameInput" placeholder="Product Name">
+            <input type="number" id="priceInput" placeholder="Price">
+            <button id="actionBtn" class="btn-add" onclick="handleAction()">Add Product ➕</button>
+            <button id="cancelBtn" style="background:grey; display:none;" onclick="resetForm()">Cancel</button>
+        </div>
+    </div>
+    
+    <ul id="productList" style="list-style: none; padding: 0;">
+        <li>Loading products...</li>
+    </ul>
+
+    <script>
+        const API_URL = '/product';
+
+        // --- RENDER FUNCTION (The Painter) ---
+        // This function takes a list of products and draws them.
+        // We use it for both Load All AND Search.
+        function renderList(products) {
+            const list = document.getElementById('productList');
+            list.innerHTML = ''; 
+            
+            if(products.length === 0) {
+                list.innerHTML = '<li style="justify-content:center;">No products found 😞</li>';
+                return;
+            }
+
+            products.forEach(p => {
+                const item = document.createElement('li');
+                item.innerHTML = `
+                    <span><b>${p.name}</b> - ₹${p.price}</span>
+                    <div>
+                        <button class="btn-edit" onclick="startEdit(${p.id}, '${p.name}', ${p.price})">✏️</button>
+                        <button class="btn-delete" onclick="deleteProduct(${p.id})">❌</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // --- 1. LOAD ALL ---
+        function loadProducts() {
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(data => renderList(data)); // Pass data to the painter
+        }
+
+        // --- 2. NEW: SEARCH ---
+        function searchProducts() {
+            const keyword = document.getElementById('searchInput').value;
+            
+            if (!keyword) {
+                loadProducts(); // If empty, show everything
+                return;
+            }
+
+            fetch(API_URL + '/search?keyword=' + keyword)
+                .then(response => response.json())
+                .then(data => renderList(data)); // Pass search results to the painter
+        }
+
+        // --- 3. ADD/UPDATE DECISION ---
+        function handleAction() {
+            const id = document.getElementById('editId').value;
+            if (id) updateProduct(id);
+            else addProduct();
+        }
+
+        // --- 4. ADD ---
+        function addProduct() {
+            const name = document.getElementById('nameInput').value;
+            const price = document.getElementById('priceInput').value;
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, price: price })
+            }).then(response => {
+                if(response.ok) { resetForm(); loadProducts(); }
+                else alert("⚠️ Error: Name required, Price must be positive.");
+            });
+        }
+
+        // --- 5. EDIT SETUP ---
+        function startEdit(id, name, price) {
+            document.getElementById('nameInput').value = name;
+            document.getElementById('priceInput').value = price;
+            document.getElementById('editId').value = id;
+            
+            document.getElementById('formTitle').innerText = "Edit Product (ID: " + id + ")";
+            const btn = document.getElementById('actionBtn');
+            btn.innerText = "Update 💾";
+            btn.className = "btn-update";
+            document.getElementById('cancelBtn').style.display = "inline";
+        }
+
+        // --- 6. UPDATE ---
+        function updateProduct(id) {
+            const name = document.getElementById('nameInput').value;
+            const price = document.getElementById('priceInput').value;
+
+            fetch(API_URL + '/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, price: price })
+            }).then(response => {
+                if(response.ok) { resetForm(); loadProducts(); }
+                else alert("⚠️ Error: Cannot Update.");
+            });
+        }
+
+        // --- 7. DELETE ---
+        function deleteProduct(id) {
+            if(confirm("Are you sure?")) {
+                fetch(API_URL + '/' + id, { method: 'DELETE' })
+                .then(() => loadProducts());
+            }
+        }
+
+        // --- 8. RESET ---
+        function resetForm() {
+            document.getElementById('nameInput').value = '';
+            document.getElementById('priceInput').value = '';
+            document.getElementById('editId').value = '';
+            document.getElementById('formTitle').innerText = "Add New Product";
+            const btn = document.getElementById('actionBtn');
+            btn.innerText = "Add Product ➕";
+            btn.className = "btn-add";
+            document.getElementById('cancelBtn').style.display = "none";
+        }
+
+        // Start!
+        loadProducts();
+    </script>
+
+</body>
+</html>
