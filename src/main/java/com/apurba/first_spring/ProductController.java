@@ -1,53 +1,45 @@
 package com.apurba.first_spring;
 
-import org.springframework.web.bind.annotation.*; // Imports everything (Get, Post, Delete, Body, etc.)
 import java.util.List;
 
-import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 
 @RestController
 public class ProductController {
 
-    private final ProductRepository repo;
+    @Autowired
+    private ProductService service; // <--- Talk to the Manager, not the Repo!
 
-    // Constructor Injection
-    public ProductController(ProductRepository repo) {
-        this.repo = repo;
-    }
-
-    // 1. GET Request: "Show me all products"
-    // URL: http://localhost:8080/product
+    // 1. GET (Read)
     @GetMapping("/product")
-    public List<Product> getAllProducts() {
-        return repo.findAll();
+    public List<Product> getProducts() {
+        return service.getAllProducts();
     }
-    // 5. SEARCH Request
-    // URL: http://localhost:8080/product/search?keyword=Phone
-    @GetMapping("/product/search")
-    public List<Product> searchProducts(@RequestParam String keyword) {
-        return repo.findByNameContaining(keyword);
-    }
-    // 2. POST Request: "Add a new product"
-    // URL: http://localhost:8080/product
+
+    // 2. POST (Create)
     @PostMapping("/product")
-    public Product addProduct(@Valid @RequestBody Product newProduct) {
-        return repo.save(newProduct);
+    public Product addProduct(@Valid @RequestBody Product p) {
+        return service.addProduct(p);
     }
 
-    // 3. DELETE Request: "Remove product by ID"
-    // URL: http://localhost:8080/product/{id}
+    // 3. DELETE
     @DeleteMapping("/product/{id}")
-    public String deleteProduct(@PathVariable Long id) {
-        repo.deleteById(id);
-        return "Product " + id + " Deleted Successfully! 🗑️";
+    public void deleteProduct(@PathVariable Long id) {
+        service.deleteProduct(id);
     }
 
-    @PutMapping("product/{id}")
-    public Product updateProduct(@PathVariable Long id,@Valid @RequestBody Product product) {
-        //TODO: process PUT request
-        
-         product.setId(id);
-         return repo.save(product);
+    // 4. PUT (Update)
+    @PutMapping("/product/{id}")
+    public Product updateProduct(@PathVariable Long id, @Valid @RequestBody Product p) {
+        return service.updateProduct(id, p);
+    }
+
+    // 5. SEARCH
+    @GetMapping("/product/search")
+    public List<Product> search(@RequestParam String keyword) {
+        return service.searchProducts(keyword);
     }
 }
